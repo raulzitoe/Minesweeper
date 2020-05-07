@@ -43,12 +43,12 @@ class Game:
         for row in range(self.squares_y):
             for column in range(self.squares_x):
                 color = WHITE
-                if self.grid[row][column].visible == True:
-                    if self.grid[row][column].bomb == True:
+                if self.grid[row][column].is_visible:
+                    if self.grid[row][column].has_bomb:
                         color = RED
                     else:
                         color = GRAY
-                elif self.grid[row][column].flag == True:
+                elif self.grid[row][column].has_flag:
                     color = BLUE
                 pygame.draw.rect(screen,
                                 color,
@@ -77,9 +77,9 @@ class Game:
     def game_over(self):
         for row in range(self.squares_y):
             for column in range(self.squares_x):
-                if self.grid[row][column].bomb:
-                    self.grid[row][column].visible = True
-                self.grid[row][column].flag = False
+                if self.grid[row][column].has_bomb:
+                    self.grid[row][column].is_visible = True
+                self.grid[row][column].has_flag = False
 
     # Changes the number of bombs placed and caps it
     def change_num_bombs(self, bombs):
@@ -88,7 +88,7 @@ class Game:
             self.num_bombs = 1
         elif self.num_bombs > (self.squares_x * self.squares_y) // 3:
             self.num_bombs = self.squares_x * self.squares_y // 3
-        self.reset_game() 
+        restart_game() 
 
     # Place BOMBS on random places
     def place_bombs(self, row, column):
@@ -96,12 +96,12 @@ class Game:
         while bombplaced < self.num_bombs:
             x = randrange(self.squares_y)
             y = randrange(self.squares_x)
-            if not self.grid[x][y].bomb and not (row == x and column == y):
-                self.grid[x][y].bomb = True
+            if not self.grid[x][y].has_bomb and not (row == x and column == y):
+                self.grid[x][y].has_bomb = True
                 bombplaced += 1
         self.count_all_bombs()
         if self.grid[row][column].bomb_count != 0:
-            self.reset_game()
+            restart_game()
             self.place_bombs(row, column)
         
     # Count all bombs next to a cell (3x3) for the entire grid
@@ -115,11 +115,11 @@ class Game:
         for row in range(self.squares_y):
             for column in range(self.squares_x):
                 self.init = False
-                self.grid[row][column].visible = False
-                self.grid[row][column].bomb = False
+                self.grid[row][column].is_visible = False
+                self.grid[row][column].has_bomb = False
                 self.grid[row][column].bomb_count = 0
                 self.grid[row][column].test = False
-                self.grid[row][column].flag = False
+                self.grid[row][column].has_flag = False
                 self.game_lost = False
                 self.game_won = False
                 self.flag_count = 0
@@ -130,48 +130,48 @@ class Game:
         total = self.squares_x * self.squares_y
         for row in range(self.squares_y):
             for column in range(self.squares_x):
-                if self.grid[row][column].visible:
+                if self.grid[row][column].is_visible:
                     count += 1
-                if self.grid[row][column].flag:
+                if self.grid[row][column].has_flag:
                     total_flags += 1
         if ((total - count) == self.num_bombs) and not self.game_lost:
             self.game_won = True
             for row in range(self.squares_y):
                 for column in range(self.squares_x):
-                    if self.grid[row][column].bomb:
-                        self.grid[row][column].flag = True
+                    if self.grid[row][column].has_bomb:
+                        self.grid[row][column].has_flag = True
         self.flag_count = total_flags
 
     # Handle for grid clicks
     def click_handle(self, row, column, button):
         # Mouse left click action
         if button == 1 and self.game_won:
-                self.reset_game()
-        elif button == 1 and not self.grid[row][column].flag: 
+                restart_game()
+        elif button == 1 and not self.grid[row][column].has_flag: 
             if not self.game_lost:
                 # Place bombs after first click so you never click a bomb first
-                if self.init == False:
+                if not self.init:
                     self.place_bombs(row, column)
                     self.init = True
                 # Set the click square to visible
-                self.grid[row][column].visible = True
-                self.grid[row][column].flag = False
-                if self.grid[row][column].bomb == True:
+                self.grid[row][column].is_visible = True
+                self.grid[row][column].has_flag = False
+                if self.grid[row][column].has_bomb:
                     self.game_over()
                     self.game_lost = True
-                if self.grid[row][column].bomb_count == 0 and self.grid[row][column].bomb == False:
+                if self.grid[row][column].bomb_count == 0 and not self.grid[row][column].has_bomb:
                     self.grid[row][column].open_neighbours(self.squares_y, self.squares_x)
             else:
                 self.game_lost = False
-                self.reset_game()
+                restart_game()
         
         # Mouse right click action
         elif button == 3 and not self.game_won:
-            if not self.grid[row][column].flag:
-                if self.flag_count < self.num_bombs and not self.grid[row][column].visible:
-                    self.grid[row][column].flag = True
+            if not self.grid[row][column].has_flag:
+                if self.flag_count < self.num_bombs and not self.grid[row][column].is_visible:
+                    self.grid[row][column].has_flag = True
             else:
-                self.grid[row][column].flag = False
+                self.grid[row][column].has_flag = False
 
 
     # Game Sub-Class for each Cell of the grid
@@ -180,16 +180,16 @@ class Game:
         def __init__(self, x, y):
             self.x = x
             self.y = y
-            self.visible = False
-            self.bomb = False
+            self.is_visible = False
+            self.has_bomb = False
             self.bomb_count = 0
             self.text = ""
             self.test = False
-            self.flag = False
+            self.has_flag = False
 
         # Handle for the number of bombs text
         def show_text(self):
-            if self.visible == True:
+            if self.is_visible:
                 if self.bomb_count == 0:
                     self.text = font.render("", True, BLACK)
                 else:
@@ -198,14 +198,14 @@ class Game:
         
         # Counts how many bombs are next to this cell (3x3)
         def count_bombs(self, squaresx, squaresy):
-            if self.test == False:
+            if not self.test:
                 self.test = True
-                if not self.bomb == True:
+                if not self.has_bomb:
                     for column in range(self.x - 1 , self.x + 2):
                         for row in range(self.y - 1 , self.y + 2):
                             if row >= 0 and row < squaresx and column >= 0 and column < squaresy:
                                 if not (column == self.x and row == self.y):
-                                    if game.grid[row][column].bomb == True:
+                                    if game.grid[row][column].has_bomb:
                                         self.bomb_count += 1
         
         # Open all cells next to the clicked cell with zero bombs nearby
@@ -217,10 +217,9 @@ class Game:
                     if ((xoff == 0 or yoff == 0) and xoff != yoff
                         and x+xoff >= 0 and y+yoff >=0 and x+xoff < squaresx and y+yoff < squaresy):
                             game.grid[x + xoff][y + yoff].count_bombs(game.squares_y, game.squares_x)
-                            if (game.grid[x + xoff][y + yoff].visible == False 
-                                and game.grid[x + xoff][y + yoff].bomb == False):  
-                                    game.grid[x + xoff][y + yoff].visible = True
-                                    game.grid[x + xoff][y + yoff].flag = False
+                            if not game.grid[x + xoff][y + yoff].is_visible and not game.grid[x + xoff][y + yoff].has_bomb:  
+                                    game.grid[x + xoff][y + yoff].is_visible = True
+                                    game.grid[x + xoff][y + yoff].has_flag = False
                                     if game.grid[x + xoff][y + yoff].bomb_count == 0: 
                                         game.grid[x + xoff][y + yoff].open_neighbours(game.squares_y, game.squares_x)
 
@@ -294,6 +293,9 @@ class Menu():
             else:
                 return False
 
+def restart_game():
+    global game
+    game = Game()
 
 # Initialize pygame and sets screen size and caption
 pygame.init()
@@ -330,9 +332,9 @@ while True:
                     menu.click_handle(game)
         # Event for screen resize    
         elif event.type == pygame.VIDEORESIZE:
-            if game.resize == True: 
+            if game.resize: 
                 game.adjust_grid(event.w, event.h)
-                game.reset_game()
+                restart_game()
             else:  
                 game.resize = True
     game.draw()
