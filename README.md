@@ -1,5 +1,5 @@
 # Minesweeper
-## Created using python and pygame library: https://www.pygame.org/
+## Created using python (3.8.2) and pygame library (1.9.6): https://www.pygame.org/
 ## Main Features:
 * Adjust number of bombs
 * First click is always a flood fill (open all cells next to the click up to cells with numbers)
